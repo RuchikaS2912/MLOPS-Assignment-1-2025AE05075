@@ -1,0 +1,43 @@
+name: MLOps CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  validate-and-train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Lint
+        run: ruff check src tests
+      - name: Unit tests
+        run: pytest -q
+      - name: Download data
+        run: python -m src.data --output data/heart.csv
+      - name: Train models and log experiments
+        run: python -m src.train --data data/heart.csv --output models/heart_pipeline.joblib --cv 5
+      - name: Build Docker image
+        run: docker build -t heart-disease-api:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name api -p 8000:8000 heart-disease-api:ci
+          for i in $(seq 1 20); do curl -sf localhost:8000/health && break; sleep 2; done
+          curl -sf -X POST localhost:8000/predict -H 'Content-Type: application/json' \
+            -d '{"age":63,"sex":1,"cp":3,"trestbps":145,"chol":233,"fbs":1,"restecg":0,"thalach":150,"exang":0,"oldpeak":2.3,"slope":2,"ca":0,"thal":3}'
+          docker logs api
+      - name: Upload model and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-artifacts
+          path: |
+            models/heart_pipeline.joblib
+            models/heart_pipeline.json
+            artifacts/
+            mlflow.db
+            mlruns/
+          if-no-files-found: error

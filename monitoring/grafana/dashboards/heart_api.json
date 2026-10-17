@@ -1,0 +1,21 @@
+{
+  "title": "Heart Disease API",
+  "uid": "heart-api",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": {"from": "now-30m", "to": "now"},
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "Requests per second by endpoint/status", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+     "datasource": {"type": "prometheus", "uid": "prometheus"},
+     "targets": [{"refId": "A", "expr": "sum by (endpoint, status) (rate(heart_api_requests_total[1m]))", "legendFormat": "{{endpoint}} {{status}}"}]},
+    {"id": 2, "type": "timeseries", "title": "p95 latency (s)", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+     "datasource": {"type": "prometheus", "uid": "prometheus"},
+     "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, endpoint) (rate(heart_api_request_duration_seconds_bucket[5m])))", "legendFormat": "{{endpoint}}"}]},
+    {"id": 3, "type": "stat", "title": "Total predictions", "gridPos": {"h": 6, "w": 8, "x": 0, "y": 8},
+     "datasource": {"type": "prometheus", "uid": "prometheus"},
+     "targets": [{"refId": "A", "expr": "sum(heart_api_requests_total{endpoint=\"/predict\"})"}]},
+    {"id": 4, "type": "stat", "title": "Error responses (5xx/4xx)", "gridPos": {"h": 6, "w": 8, "x": 8, "y": 8},
+     "datasource": {"type": "prometheus", "uid": "prometheus"},
+     "targets": [{"refId": "A", "expr": "sum(heart_api_requests_total{status=~\"4..|5..\"}) or vector(0)"}]}
+  ]
+}
